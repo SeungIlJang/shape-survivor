@@ -42,7 +42,7 @@
   <div id="ingameShop" class="center hidden" style="z-index:15;">
     <h1 style="font-size:24px;">🏪 영구 강화</h1>
     <div style="font-weight:800;margin-bottom:6px;">🪙 <span id="goldNum2">0</span></div>
-    <p class="sub" style="margin-bottom:10px;">지금 강화하면 <b>다음 판부터</b> 적용돼요</p>
+    <p class="sub" style="margin-bottom:10px;">⚡ 지금 강화하면 <b>즉시 적용</b>돼요!</p>
     <div class="cards" id="shop2" style="margin-bottom:16px;max-height:50vh;overflow-y:auto;width:min(88vw,440px);"></div>
     <button class="btn" id="shopCloseBtn">닫기</button>
   </div>
@@ -149,11 +149,11 @@ let hurtSfxCd=0, gemSfxCd=0;
 
 // ---- Meta 진행 (localStorage 영구 저장) ----
 const META_DEFS=[
-  {key:'hp',   name:'❤️ 시작 체력', desc:'+20 최대체력', base:30, mul:1.6, max:8, apply:(p,l)=>{p.maxhp+=20*l; p.hp=p.maxhp;}},
-  {key:'dmg',  name:'💥 공격력',    desc:'+8% 데미지',   base:40, mul:1.7, max:8, apply:(p,l)=>{p.dmg*=(1+0.08*l);}},
-  {key:'spd',  name:'👟 이동속도',  desc:'+5% 이동',     base:35, mul:1.7, max:6, apply:(p,l)=>{p.speed*=(1+0.05*l);}},
-  {key:'magnet',name:'🧲 자석 범위',desc:'+12% 흡수',    base:30, mul:1.6, max:6, apply:(p,l)=>{p.magnet*=(1+0.12*l);}},
-  {key:'gold', name:'🪙 골드 획득', desc:'+15% 획득량',  base:50, mul:1.8, max:6, apply:()=>{}},
+  {key:'hp',   name:'❤️ 최대 체력', desc:'+20 최대체력(+회복)', base:30, mul:1.6, max:8, one:p=>{p.maxhp+=20; p.hp+=20;}},
+  {key:'dmg',  name:'💥 공격력',    desc:'+8% 데미지',   base:40, mul:1.7, max:8, one:p=>{p.dmg*=1.08;}},
+  {key:'spd',  name:'👟 이동속도',  desc:'+5% 이동',     base:35, mul:1.7, max:6, one:p=>{p.speed*=1.05;}},
+  {key:'magnet',name:'🧲 자석 범위',desc:'+12% 흡수',    base:30, mul:1.6, max:6, one:p=>{p.magnet*=1.12;}},
+  {key:'gold', name:'🪙 골드 획득', desc:'+15% 획득량',  base:50, mul:1.8, max:6, one:()=>{}},
 ];
 function loadMeta(){ try{ const m=JSON.parse(localStorage.getItem('ss_meta')); if(m&&m.lvls){ if(!m.cls) m.cls={ranger:1}; if(!m.sel) m.sel='ranger'; return m; } }catch{} return {gold:0, lvls:{}, cls:{ranger:1}, sel:'ranger'}; }
 // 직업(클래스) 정의
@@ -186,13 +186,15 @@ function saveMeta(){ try{ localStorage.setItem('ss_meta', JSON.stringify(meta));
 const metaLvl=k=>meta.lvls[k]||0;
 const metaCost=d=>Math.floor(d.base*Math.pow(d.mul, metaLvl(d.key)));
 const goldMult=()=>1+0.15*metaLvl('gold');
-function applyMeta(p){ for(const d of META_DEFS){ const l=metaLvl(d.key); if(l>0) d.apply(p,l); } }
+function applyMeta(p){ for(const d of META_DEFS){ const l=metaLvl(d.key); for(let i=0;i<l;i++) d.one(p); } }
 function fillShop(box){
   box.innerHTML='';
   META_DEFS.forEach(d=>{ const l=metaLvl(d.key), c=metaCost(d), maxed=l>=d.max, can=!maxed&&meta.gold>=c;
     const el=document.createElement('div'); el.className='card'; if(!can) el.style.opacity=.5;
     el.innerHTML=`<div class="t">${d.name} <span style="opacity:.55;font-size:14px;">Lv${l}${maxed?' · MAX':''}</span></div><div class="d">${d.desc} · ${maxed?'최대 강화':('🪙 '+c)}</div>`;
-    if(can) el.onclick=()=>{ initAudio(); meta.gold-=c; meta.lvls[d.key]=l+1; saveMeta(); renderShop(); tone(880,0.08,'square',0.14,1200); };
+    if(can) el.onclick=()=>{ initAudio(); meta.gold-=c; meta.lvls[d.key]=l+1;
+      if(player && (state==='play'||state==='paused')) d.one(player); // 게임 중이면 즉시 적용
+      saveMeta(); renderShop(); tone(880,0.08,'square',0.14,1200); };
     box.appendChild(el);
   });
 }
