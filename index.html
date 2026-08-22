@@ -214,6 +214,8 @@ let time, kills, spawnTimer, shake, lastTs, bossAlive, banner='', bannerT=0, sta
 const STAGE_BOSS_DELAY=32; // 스테이지 시작 후 보스 등장까지(초)
 // 난이도 시계 = 메타 오프셋 + 스테이지 진행 (스테이지가 오를수록 상승)
 function dtime(){ return startOffset + (stage-1)*60 + stageTime; }
+// 스테이지1은 강화/오프셋 무시하고 순수 경과시간만 → 몸풀기 난이도
+function ddiff(){ return stage===1 ? stageTime*0.6 : dtime(); }
 function metaPower(){ return Object.values(meta.lvls).reduce((a,b)=>a+b,0); }
 
 function reset(){
@@ -227,8 +229,7 @@ function reset(){
   flashT=0; hurtFlash=0; goldDoubled=false; revivedThisRun=false; combo=0; comboTimer=0; maxCombo=0;
   time=0; kills=0; spawnTimer=0; shake=0; bossAlive=false; banner='STAGE 1 ▶ 보스 처치!'; bannerT=2.6;
   stage=1; stageTime=0; bossSpawned=false;
-  startOffset = metaPower()*1.4;             // 강화 많을수록 초반 강도 살짝↑ (완만하게)
-  for(let i=0;i<Math.floor(startOffset/28);i++) spawnEnemy(); // 시작 적 배치 최소화
+  startOffset = metaPower()*1.4;             // 강화 많을수록 스테이지2+ 강도↑ (스테이지1은 제외)
 }
 
 // ---- Input: floating joystick / drag ----
@@ -267,11 +268,11 @@ function edgePos(){ const e=Math.floor(rand(0,4));
   if(e===0)return{x:rand(0,W),y:-20}; if(e===1)return{x:W+20,y:rand(0,H)};
   if(e===2)return{x:rand(0,W),y:H+20}; return{x:-20,y:rand(0,H)}; }
 function makeEnemy(x,y,type,diff){
-  const D=ETYPE[type], speedScale=1+Math.min(dtime()/170,1.5), s=rand(D.spd[0],D.spd[1])*speedScale;
+  const D=ETYPE[type], speedScale=1+Math.min(ddiff()/170,1.5), s=rand(D.spd[0],D.spd[1])*speedScale;
   return {x,y,type,r:D.r,hp:D.hp*diff,maxhp:D.hp*diff,speed:s,dmg:D.dmg,color:D.color,gem:D.gem,big:!!D.big,shape:D.shape,t:rand(0,6.28)};
 }
 function spawnEnemy(){
-  const T=dtime(), diff=(1+T/34)*(1+(stage-1)*0.35), p=edgePos(), r=Math.random(); let type='normal';
+  const T=ddiff(), diff=(1+T/(stage===1?60:34))*(1+(stage-1)*0.35), p=edgePos(), r=Math.random(); let type='normal';
   if(T>120 && r<0.12) type='splitter';
   else if(T>60 && r<0.30) type='weaver';
   else if(r<Math.min(0.05+T/400,0.28)) type='tank';
@@ -279,8 +280,8 @@ function spawnEnemy(){
   enemies.push(makeEnemy(p.x,p.y,type,diff));
 }
 function spawnBoss(){
-  const p=edgePos(), diff=1+dtime()/35, e=makeEnemy(p.x,p.y,'tank',1);
-  e.type='boss'; e.boss=true; e.big=true; e.r=46; e.hp=e.maxhp=(260+(stage-1)*260)*diff; e.speed=40+stage*2; e.dmg=26+stage*6; e.gem=0;
+  const p=edgePos(), diff=1+ddiff()/35, e=makeEnemy(p.x,p.y,'tank',1);
+  e.type='boss'; e.boss=true; e.big=true; e.r=46; e.hp=e.maxhp=(stage===1?150:260+(stage-1)*260)*diff; e.speed=(stage===1?36:40+stage*2); e.dmg=(stage===1?16:26+stage*6); e.gem=0;
   const kinds=['charge','summon','shoot']; e.bossKind=kinds[(stage-1)%3]; e.abilityCd=3; e.dashT=0;
   const km={charge:{c:'#ff5ce1',s:3,n:'돌진'},summon:{c:'#c96bff',s:5,n:'소환'},shoot:{c:'#ff8a3c',s:6,n:'탄막'}}[e.bossKind];
   e.color=km.c; e.shape=km.s;
@@ -411,7 +412,7 @@ function update(dt){
   player.y=Math.max(player.r,Math.min(H-player.r,player.y));
   // spawn (난이도 시계 기준)
   stageTime+=dt;
-  const T=dtime();
+  const T=ddiff();
   spawnTimer-=dt; const interval=Math.max(0.16, 1.1 - T/55);
   if(spawnTimer<=0){ spawnTimer=interval; spawnEnemy();
     const extra=Math.floor((stage-1)*0.7 + (T>60?1:0)); // 스테이지 높을수록 더 몰림
@@ -457,7 +458,7 @@ function update(dt){
     if(e.type==='weaver'){ const px=-Math.sin(ang),py=Math.cos(ang), w=Math.sin(e.t*4)*e.speed*0.9; vx+=px*w; vy+=py*w; }
     e.x+=vx*dt; e.y+=vy*dt;
     // hit player
-    const rr=(e.r+player.r); if(dist2(e,player)<rr*rr){ player.hp-=e.dmg*dt*3*(1+dtime()/95)*player.dmgReduce; shake=Math.min(shake+.4,8); hurtFlash=0.25; if(hurtSfxCd<=0){sfx.hurt(); hurtSfxCd=0.35;} }
+    const rr=(e.r+player.r); if(dist2(e,player)<rr*rr){ player.hp-=e.dmg*dt*3*(1+ddiff()/95)*player.dmgReduce; shake=Math.min(shake+.4,8); hurtFlash=0.25; if(hurtSfxCd<=0){sfx.hurt(); hurtSfxCd=0.35;} }
   }
   // bullet-enemy collision
   for(const b of bullets){
