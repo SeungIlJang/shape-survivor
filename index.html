@@ -315,7 +315,7 @@ function hurtEnemy(e,dmg,color){
   if(e.dead) return; e.flash=0.06; e.hp-=dmg;
   if(e.hp<=0){ e.dead=true; kills++;
     combo++; comboTimer=2.5; if(combo>maxCombo) maxCombo=combo;
-    { const g=e.boss?20:1; meta.gold+=g; runGold+=g; } // 실시간 골드
+    { const g=Math.round((e.boss?20:1)*(1+(player.level-1)*0.2)); meta.gold+=g; runGold+=g; } // 실시간 골드(레벨↑ 시 증가)
     texts.push({x:e.x,y:e.y-e.r,vy:-46,life:0.7,str:e.boss?'BOSS!':'+'+(e.gem||1),color:e.boss?'#ff5ce1':'#9dffbf',size:e.boss?22:14});
     burst(e.x,e.y,color||e.color,e.big?18:8); shake=Math.min(shake+(e.boss?4:1),12);
     e.big?sfx.killBig():sfx.kill();
