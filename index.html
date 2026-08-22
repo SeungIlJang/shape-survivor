@@ -590,6 +590,8 @@ function render(){
   // 무기 빌드 표시 (하단)
   let wx=14; ctx.font='15px system-ui';
   for(const k in player.weapons){ const lv=player.weapons[k], ev=player.evolved[k]; ctx.fillStyle=ev?'#ffd25c':'#cfe3ff'; ctx.fillText(WEAPONS[k].icon+(ev?'★':lv), wx, H-16); wx+=46; }
+  // 보유 골드 (우측 하단)
+  ctx.textAlign='right'; ctx.fillStyle='#ffd25c'; ctx.font='bold 16px system-ui'; ctx.fillText('🪙 '+meta.gold, W-14, H-16); ctx.textAlign='left';
   // boss HP 바
   if(bossAlive){ const b=enemies.find(e=>e.boss); if(b){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(30,80,W-60,10); ctx.fillStyle='#ff5ce1'; ctx.fillRect(30,80,(W-60)*Math.max(0,b.hp/b.maxhp),10); ctx.fillStyle='#fff'; ctx.font='bold 11px system-ui'; ctx.textAlign='center'; ctx.fillText('⬢ BOSS',W/2,76); ctx.textAlign='left'; } }
   // 배너
