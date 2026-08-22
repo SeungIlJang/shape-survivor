@@ -166,9 +166,10 @@ let state = 'start'; // start | play | levelup | over
 let player, enemies, bullets, gems, particles, texts, heals;
 let flashT=0, hurtFlash=0, lastEarned=0, goldDoubled=false, revivedThisRun=false;
 let best=0; try{ best=parseInt(localStorage.getItem('ss_best')||'0')||0; }catch{}
-let time, kills, spawnTimer, shake, lastTs, bossTimer, bossAlive, banner='', bannerT=0, startOffset=0;
-// 난이도 시계 = 실제 생존시간 + 메타강화에 따른 시작 오프셋
-function dtime(){ return time + startOffset; }
+let time, kills, spawnTimer, shake, lastTs, bossAlive, banner='', bannerT=0, startOffset=0, stage, stageTime, bossSpawned;
+const STAGE_BOSS_DELAY=38; // 스테이지 시작 후 보스 등장까지(초)
+// 난이도 시계 = 메타 오프셋 + 스테이지 진행 (스테이지가 오를수록 상승)
+function dtime(){ return startOffset + (stage-1)*45 + stageTime; }
 function metaPower(){ return Object.values(meta.lvls).reduce((a,b)=>a+b,0); }
 
 function reset(){
@@ -179,9 +180,9 @@ function reset(){
   applyMeta(player);
   enemies=[]; bullets=[]; gems=[]; particles=[]; texts=[]; heals=[];
   flashT=0; hurtFlash=0; goldDoubled=false; revivedThisRun=false;
-  time=0; kills=0; spawnTimer=0; shake=0; bossAlive=false; banner=''; bannerT=0;
+  time=0; kills=0; spawnTimer=0; shake=0; bossAlive=false; banner='STAGE 1 ▶ 보스 처치!'; bannerT=2.6;
+  stage=1; stageTime=0; bossSpawned=false;
   startOffset = metaPower()*1.4;             // 강화 많을수록 초반 강도 살짝↑ (완만하게)
-  bossTimer = Math.max(48, 70 - startOffset*0.2);  // 보스는 너무 빨리 안 나오게
   for(let i=0;i<Math.floor(startOffset/28);i++) spawnEnemy(); // 시작 적 배치 최소화
 }
 
@@ -234,7 +235,7 @@ function spawnEnemy(){
 }
 function spawnBoss(){
   const p=edgePos(), diff=1+dtime()/35, e=makeEnemy(p.x,p.y,'tank',1);
-  e.type='boss'; e.boss=true; e.big=true; e.r=46; e.hp=e.maxhp=320*diff; e.speed=44; e.dmg=32; e.color='#ff5ce1'; e.gem=0; e.shape=6;
+  e.type='boss'; e.boss=true; e.big=true; e.r=46; e.hp=e.maxhp=(240+(stage-1)*150)*diff; e.speed=42+stage*2; e.dmg=28+stage*4; e.color='#ff5ce1'; e.gem=0; e.shape=6;
   enemies.push(e); bossAlive=true; banner='⬢  B O S S'; bannerT=2.2; tone(70,0.5,'sawtooth',0.25,50); noise(0.4,0.3);
 }
 
@@ -250,11 +251,12 @@ function hurtEnemy(e,dmg,color){
     e.big?sfx.killBig():sfx.kill();
     if(e.gem>0) gems.push({x:e.x,y:e.y,v:e.gem});
     if(player.lifesteal>0) player.hp=Math.min(player.maxhp, player.hp+player.lifesteal);
-    if(e.boss) heals.push({x:e.x,y:e.y}); else if(Math.random()<0.03) heals.push({x:e.x,y:e.y}); // 힐 드롭
+    if(e.boss) heals.push({x:e.x,y:e.y}); else if(Math.random()<0.02) heals.push({x:e.x,y:e.y}); // 힐 드롭(희귀)
     if(e.type==='splitter'){ for(let i=0;i<2;i++){ const a=rand(0,6.28); enemies.push(makeEnemy(e.x+Math.cos(a)*10,e.y+Math.sin(a)*10,'fast',1+time/60)); } }
-    if(e.boss){ bossAlive=false; kills+=15; banner='BOSS 처치! 🪙'; bannerT=2;
+    if(e.boss){ kills+=15;
       for(let i=0;i<12;i++){ const a=rand(0,6.28),d=rand(10,40); gems.push({x:e.x+Math.cos(a)*d,y:e.y+Math.sin(a)*d,v:5}); }
-      for(let i=0;i<24;i++){ const a=rand(0,6.28),s=rand(60,240); particles.push({x:e.x,y:e.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.4,.8),color:'#ff5ce1'}); } }
+      for(let i=0;i<24;i++){ const a=rand(0,6.28),s=rand(60,240); particles.push({x:e.x,y:e.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.4,.8),color:'#ff5ce1'}); }
+      stageClear(); }
   }
 }
 // 무기 정의 (Lv6 만렙 → 진화)
@@ -292,7 +294,7 @@ const STAT_UPS=[
   {t:'➡️ 관통 +1', d:'총알이 적을 관통', a:p=>p.pierce+=1},
   {t:'❤️ 최대 체력 +25', d:'체력 회복 포함', a:p=>{p.maxhp+=25;p.hp=Math.min(p.maxhp,p.hp+25);}},
   {t:'🧲 자석 +50%', d:'젬 흡수 범위', a:p=>p.magnet*=1.5},
-  {t:'🩸 흡혈 +2', d:'적 처치 시 체력 회복', a:p=>p.lifesteal+=2},
+  {t:'🩸 흡혈 +1', d:'적 처치 시 체력 회복', a:p=>p.lifesteal+=1},
 ];
 function buildChoices(){
   const pool=[];
@@ -313,6 +315,11 @@ function buildChoices(){
   }
   return chosen;
 }
+function stageClear(){
+  bossAlive=false; stage++; stageTime=0; bossSpawned=false;
+  banner='STAGE '+stage+' ▲'; bannerT=2.6; sfx.levelup(); flashT=0.4;
+  player.hp=Math.min(player.maxhp, player.hp+player.maxhp*0.3); // 클리어 보상: 체력 30% 회복
+}
 function openLevelUp(){
   state='levelup'; sfx.levelup(); flashT=0.4;
   const box=document.getElementById('cards'); box.innerHTML='';
@@ -332,11 +339,12 @@ function update(dt){
   player.x=Math.max(player.r,Math.min(W-player.r,player.x));
   player.y=Math.max(player.r,Math.min(H-player.r,player.y));
   // spawn (난이도 시계 기준)
+  stageTime+=dt;
   const T=dtime();
   spawnTimer-=dt; const interval=Math.max(0.28, 1.15 - T/70);
   if(spawnTimer<=0){ spawnTimer=interval; spawnEnemy(); if(T>45&&Math.random()<.45) spawnEnemy(); if(T>110&&Math.random()<.4) spawnEnemy(); }
-  // boss
-  bossTimer-=dt; if(bossTimer<=0 && !bossAlive){ spawnBoss(); bossTimer=85; }
+  // 스테이지 보스: 일정 시간 뒤 등장, 처치하면 스테이지 클리어
+  if(!bossSpawned && stageTime>=STAGE_BOSS_DELAY){ spawnBoss(); bossSpawned=true; }
   if(bannerT>0) bannerT-=dt;
   // weapons
   weaponFireTick(dt);
@@ -361,7 +369,7 @@ function update(dt){
     if(e.type==='weaver'){ const px=-Math.sin(ang),py=Math.cos(ang), w=Math.sin(e.t*4)*e.speed*0.9; vx+=px*w; vy+=py*w; }
     e.x+=vx*dt; e.y+=vy*dt;
     // hit player
-    const rr=(e.r+player.r); if(dist2(e,player)<rr*rr){ player.hp-=e.dmg*dt*3; shake=Math.min(shake+.4,8); hurtFlash=0.25; if(hurtSfxCd<=0){sfx.hurt(); hurtSfxCd=0.35;} }
+    const rr=(e.r+player.r); if(dist2(e,player)<rr*rr){ player.hp-=e.dmg*dt*3*(1+dtime()/140); shake=Math.min(shake+.4,8); hurtFlash=0.25; if(hurtSfxCd<=0){sfx.hurt(); hurtSfxCd=0.35;} }
   }
   // bullet-enemy collision
   for(const b of bullets){
@@ -385,7 +393,7 @@ function update(dt){
   // 힐 획득
   for(const h of heals){ const d=dist2(h,player);
     if(d<player.magnet*player.magnet){ const a=Math.atan2(player.y-h.y,player.x-h.x); h.x+=Math.cos(a)*300*dt; h.y+=Math.sin(a)*300*dt; }
-    if(d<(player.r+12)*(player.r+12)){ h.got=true; player.hp=Math.min(player.maxhp,player.hp+20); texts.push({x:h.x,y:h.y-10,vy:-42,life:0.8,str:'+20 HP',color:'#5cff9e',size:14}); tone(660,0.1,'sine',0.12,990); } }
+    if(d<(player.r+12)*(player.r+12)){ h.got=true; player.hp=Math.min(player.maxhp,player.hp+12); texts.push({x:h.x,y:h.y-10,vy:-42,life:0.8,str:'+12 HP',color:'#5cff9e',size:14}); tone(660,0.1,'sine',0.12,990); } }
   heals=heals.filter(h=>!h.got);
   // 성능 안전장치: 개체 수 상한
   if(enemies.length>240) enemies.length=240;
@@ -460,7 +468,7 @@ function render(){
   ctx.fillStyle='#5cff9e'; ctx.fillRect(16,34,(W-32)*(player.xp/player.xpNeed),7);
   ctx.fillStyle='#fff'; ctx.font='bold 16px system-ui'; ctx.textAlign='left';
   ctx.fillText('Lv '+player.level, 16, 62);
-  ctx.textAlign='center'; ctx.fillText(Math.floor(time)+'s', W/2, 62);
+  ctx.textAlign='center'; ctx.fillText('STAGE '+stage+' · '+Math.floor(time)+'s', W/2, 62);
   ctx.textAlign='right'; ctx.fillText('처치 '+kills, W-16, 62);
   ctx.textAlign='left';
   // 무기 빌드 표시 (하단)
@@ -492,7 +500,7 @@ function gameOver(){ state='over'; sfx.over();
   if(surv>best){ best=surv; try{localStorage.setItem('ss_best',best);}catch{} rec=' 🏆신기록!'; }
   lastEarned=Math.floor((kills + time*0.5) * goldMult());
   meta.gold+=lastEarned; saveMeta(); renderShop();
-  document.getElementById('overStats').innerHTML=`생존 <b>${surv}초</b>${rec} · 처치 <b>${kills}</b> · Lv <b>${player.level}</b><br/>🏆 최고 ${best}초 &nbsp;·&nbsp; 🪙 <b>+${lastEarned}</b> (보유 ${meta.gold})`;
+  document.getElementById('overStats').innerHTML=`STAGE <b>${stage}</b> · 생존 <b>${surv}초</b>${rec} · 처치 <b>${kills}</b><br/>🏆 최고 ${best}초 &nbsp;·&nbsp; 🪙 <b>+${lastEarned}</b> (보유 ${meta.gold})`;
   const rb=document.getElementById('reviveBtn'); rb.style.display=revivedThisRun?'none':'block';
   const db=document.getElementById('dblBtn'); db.disabled=false; db.style.opacity=1; db.textContent='🎬 광고 보고 골드 2배'; goldDoubled=false;
   document.getElementById('over').classList.remove('hidden'); }
