@@ -371,7 +371,10 @@ function buildChoices(){
 }
 function stageClear(){
   bossAlive=false; stage++; stageTime=0; bossSpawned=false;
-  banner='STAGE '+stage+' ▲'; bannerT=2.6; sfx.levelup(); flashT=0.4;
+  banner='STAGE '+stage+' ▲'; bannerT=2.6; sfx.levelup(); flashT=0.5; shake=Math.min(shake+6,14);
+  // 남은 적·탄막 전부 소멸 (화면 정리)
+  for(const e of enemies){ if(!e.dead){ burst(e.x,e.y,e.color,6); if(Math.random()<0.5) gems.push({x:e.x,y:e.y,v:1}); } }
+  enemies.length=0; ebullets.length=0;
   player.hp=Math.min(player.maxhp, player.hp+player.maxhp*0.3); // 클리어 보상: 체력 30% 회복
 }
 function openLevelUp(){
