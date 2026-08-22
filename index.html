@@ -43,7 +43,8 @@
     <h1 style="font-size:24px;">🏪 영구 강화</h1>
     <div style="font-weight:800;margin-bottom:6px;">🪙 <span id="goldNum2">0</span></div>
     <p class="sub" style="margin-bottom:10px;">⚡ 지금 강화하면 <b>즉시 적용</b>돼요!</p>
-    <div class="cards" id="shop2" style="margin-bottom:16px;max-height:50vh;overflow-y:auto;width:min(88vw,440px);"></div>
+    <button class="btn" id="potionBtn" style="margin-bottom:12px;background:#c0392b;box-shadow:0 6px 0 #7d2419;">❤️ 체력 물약 · 50% 회복 (🪙 20)</button>
+    <div class="cards" id="shop2" style="margin-bottom:16px;max-height:44vh;overflow-y:auto;width:min(88vw,440px);"></div>
     <button class="btn" id="shopCloseBtn">닫기</button>
   </div>
   <div id="start" class="center">
@@ -225,7 +226,7 @@ function renderClasses(){
 // ---- Game State ----
 let state = 'start'; // start | play | levelup | over
 let player, enemies, bullets, gems, particles, texts, heals, ebullets;
-let flashT=0, hurtFlash=0, lastEarned=0, goldDoubled=false, revivedThisRun=false;
+let flashT=0, hurtFlash=0, lastEarned=0, lastEndBonus=0, runGold=0, goldDoubled=false, revivedThisRun=false;
 let combo=0, comboTimer=0, maxCombo=0;
 let best=0; try{ best=parseInt(localStorage.getItem('ss_best')||'0')||0; }catch{}
 let time, kills, spawnTimer, shake, lastTs, bossAlive, banner='', bannerT=0, startOffset=0, stage, stageTime, bossSpawned;
@@ -244,7 +245,7 @@ function reset(){
     awakened:false, dmgReduce:1, sigCd:0, cls:'ranger' };
   applyMeta(player); applyClass(player);
   enemies=[]; bullets=[]; gems=[]; particles=[]; texts=[]; heals=[]; ebullets=[];
-  flashT=0; hurtFlash=0; goldDoubled=false; revivedThisRun=false; combo=0; comboTimer=0; maxCombo=0;
+  flashT=0; hurtFlash=0; goldDoubled=false; revivedThisRun=false; combo=0; comboTimer=0; maxCombo=0; runGold=0;
   time=0; kills=0; spawnTimer=0; shake=0; bossAlive=false; banner='STAGE 1 ▶ 보스 처치!'; bannerT=2.6;
   stage=1; stageTime=0; bossSpawned=false;
   startOffset = metaPower()*0.6;             // 강화 많을수록 스테이지2+ 강도↑ (스테이지1은 제외)
@@ -314,6 +315,7 @@ function hurtEnemy(e,dmg,color){
   if(e.dead) return; e.flash=0.06; e.hp-=dmg;
   if(e.hp<=0){ e.dead=true; kills++;
     combo++; comboTimer=2.5; if(combo>maxCombo) maxCombo=combo;
+    { const g=e.boss?20:1; meta.gold+=g; runGold+=g; } // 실시간 골드
     texts.push({x:e.x,y:e.y-e.r,vy:-46,life:0.7,str:e.boss?'BOSS!':'+'+(e.gem||1),color:e.boss?'#ff5ce1':'#9dffbf',size:e.boss?22:14});
     burst(e.x,e.y,color||e.color,e.big?18:8); shake=Math.min(shake+(e.boss?4:1),12);
     e.big?sfx.killBig():sfx.kill();
@@ -616,9 +618,9 @@ function gameOver(){ state='over'; sfx.over();
   document.getElementById('pauseBtn').style.display='none';
   const surv=Math.floor(time); let rec='';
   if(surv>best){ best=surv; try{localStorage.setItem('ss_best',best);}catch{} rec=' 🏆신기록!'; }
-  lastEarned=Math.floor((kills + time*0.5 + maxCombo) * goldMult());
-  meta.gold+=lastEarned; saveMeta(); renderShop();
-  document.getElementById('overStats').innerHTML=`STAGE <b>${stage}</b> · 생존 <b>${surv}초</b>${rec} · 처치 <b>${kills}</b> · 최대콤보 <b>${maxCombo}</b><br/>🏆 최고 ${best}초 &nbsp;·&nbsp; 🪙 <b>+${lastEarned}</b> (보유 ${meta.gold})`;
+  lastEndBonus=Math.floor((time*0.4 + maxCombo) * goldMult()); // 마감 보너스(생존·콤보)
+  meta.gold+=lastEndBonus; lastEarned=runGold+lastEndBonus; saveMeta(); renderShop();
+  document.getElementById('overStats').innerHTML=`STAGE <b>${stage}</b> · 생존 <b>${surv}초</b>${rec} · 처치 <b>${kills}</b> · 최대콤보 <b>${maxCombo}</b><br/>🏆 최고 ${best}초 &nbsp;·&nbsp; 🪙 이번판 <b>+${lastEarned}</b> (보유 ${meta.gold})`;
   const rb=document.getElementById('reviveBtn'); rb.style.display=revivedThisRun?'none':'block';
   const db=document.getElementById('dblBtn'); db.disabled=false; db.style.opacity=1; db.textContent='🎬 광고 보고 골드 2배'; goldDoubled=false;
   document.getElementById('over').classList.remove('hidden'); }
@@ -633,7 +635,7 @@ function playAd(cb){
   cb();
 }
 document.getElementById('reviveBtn').onclick=()=>{ if(revivedThisRun||state!=='over') return; revivedThisRun=true; document.getElementById('reviveBtn').style.display='none';
-  playAd(()=>{ meta.gold-=lastEarned; saveMeta(); // 부활 시 이번 판 골드는 최종 사망 때 재정산
+  playAd(()=>{ meta.gold-=lastEndBonus; saveMeta(); // 부활: 마감 보너스만 회수(실시간 획득분은 유지)
     player.hp=player.maxhp*0.6; enemies.length=0; bullets.length=0; ebullets.length=0;
     document.getElementById('over').classList.add('hidden'); document.getElementById('pauseBtn').style.display='block'; banner='부활! ▲'; bannerT=1.6; resize(); state='play'; lastTs=performance.now(); }); };
 document.getElementById('dblBtn').onclick=(e)=>{ if(goldDoubled) return; goldDoubled=true; const b=e.currentTarget; b.disabled=true; b.style.opacity=.5; b.textContent='광고 재생 중…';
@@ -647,6 +649,8 @@ document.getElementById('resumeBtn').onclick=()=>{ if(state!=='paused') return; 
 document.getElementById('quitBtn').onclick=()=>{ document.getElementById('paused').classList.add('hidden'); document.getElementById('pauseBtn').style.display='none'; gameOver(); };
 document.getElementById('pauseShopBtn').onclick=()=>{ document.getElementById('paused').classList.add('hidden'); document.getElementById('ingameShop').classList.remove('hidden'); renderShop(); };
 document.getElementById('shopCloseBtn').onclick=()=>{ document.getElementById('ingameShop').classList.add('hidden'); document.getElementById('paused').classList.remove('hidden'); };
+document.getElementById('potionBtn').onclick=(e)=>{ if(!player) return; if(meta.gold<20){ alert('골드가 부족해요! 🪙20 필요'); return; }
+  meta.gold-=20; player.hp=Math.min(player.maxhp, player.hp+player.maxhp*0.5); saveMeta(); renderShop(); tone(660,0.12,'sine',0.15,990); };
 renderShop(); renderClasses();
 
 // ---- 배경음악 (Web Audio 절차 생성, 은은한 루프) ----
