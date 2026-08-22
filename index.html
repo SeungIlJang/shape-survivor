@@ -555,8 +555,6 @@ function render(){
   if(bossAlive){ const b=enemies.find(e=>e.boss); if(b){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(30,80,W-60,10); ctx.fillStyle='#ff5ce1'; ctx.fillRect(30,80,(W-60)*Math.max(0,b.hp/b.maxhp),10); ctx.fillStyle='#fff'; ctx.font='bold 11px system-ui'; ctx.textAlign='center'; ctx.fillText('⬢ BOSS',W/2,76); ctx.textAlign='left'; } }
   // 배너
   if(bannerT>0){ ctx.globalAlpha=Math.min(1,bannerT); ctx.fillStyle='#ff5ce1'; ctx.font='bold 30px system-ui'; ctx.textAlign='center'; ctx.fillText(banner,W/2,H*0.28); ctx.textAlign='left'; ctx.globalAlpha=1; }
-  // 콤보
-  if(combo>=5){ ctx.globalAlpha=Math.max(0.3,Math.min(1,comboTimer)); ctx.fillStyle=combo>=30?'#ff5ce1':'#ffd25c'; ctx.font='bold '+(22+Math.min(combo,40))+'px system-ui'; ctx.textAlign='center'; ctx.fillText(combo+' COMBO', W/2, H*0.4); ctx.globalAlpha=1; ctx.textAlign='left'; }
   // joystick
   if(dragging){ ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(origin.x,origin.y,60,0,Math.PI*2); ctx.stroke();
     ctx.fillStyle='rgba(255,255,255,.4)'; ctx.beginPath(); ctx.arc(origin.x+moveDir.x*40*(moveDir.mag||1),origin.y+moveDir.y*40*(moveDir.mag||1),22,0,Math.PI*2); ctx.fill(); }
