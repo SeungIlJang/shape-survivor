@@ -162,7 +162,7 @@ const CLASSES=[
   {key:'ranger',  name:'레인저', icon:'🔺', cost:0,   weapon:'bolt',  desc:'볼트 · 사거리+20%, 연사+10% (입문)', apply:p=>{ p.range*=1.2; p.fireRate*=1.1; }},
   {key:'warrior', name:'전사',   icon:'🟥', cost:300, weapon:'slash', desc:'참격 Lv2 · 체력+50%, 흡혈, 공격+15% (탱커)', apply:p=>{ p.maxhp*=1.5; p.lifesteal+=1; p.dmg*=1.15; p.speed*=0.95; p.weapons.slash=2; }},
   {key:'mage',    name:'마법사', icon:'🟣', cost:500, weapon:'nova',  desc:'충격파 Lv3 · 공격+35%, 체력-25% (유리대포)', apply:p=>{ p.dmg*=1.35; p.maxhp*=0.75; p.weapons.nova=3; }},
-  {key:'guardian',name:'수호자', icon:'🟡', cost:500, weapon:'orbit', desc:'궤도 · 체력+25%, 자석+50%, 궤도+1 (자동방어)', apply:p=>{ p.maxhp*=1.25; p.magnet*=1.5; p.weapons.orbit=2; }},
+  {key:'guardian',name:'수호자', icon:'🟡', cost:500, weapon:'orbit', desc:'궤도 Lv3 · 체력+25%, 자석+50% (자동방어)', apply:p=>{ p.maxhp*=1.25; p.magnet*=1.5; p.weapons.orbit=3; }},
 ];
 function applyClass(p){
   const c=CLASSES.find(x=>x.key===meta.sel)||CLASSES[0];
