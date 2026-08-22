@@ -36,7 +36,15 @@
   <div id="paused" class="center hidden">
     <h1>⏸ 일시정지</h1>
     <button class="btn" id="resumeBtn">계속하기</button>
+    <button class="btn" id="pauseShopBtn" style="margin-top:12px;background:#c9a227;box-shadow:0 6px 0 #8a6f16;">🪙 상점</button>
     <button id="quitBtn" style="margin-top:14px;pointer-events:auto;background:none;border:1px solid #3a3f55;color:#9aa;border-radius:10px;padding:8px 16px;font-size:13px;cursor:pointer;">포기하고 상점으로</button>
+  </div>
+  <div id="ingameShop" class="center hidden" style="z-index:15;">
+    <h1 style="font-size:24px;">🏪 영구 강화</h1>
+    <div style="font-weight:800;margin-bottom:6px;">🪙 <span id="goldNum2">0</span></div>
+    <p class="sub" style="margin-bottom:10px;">지금 강화하면 <b>다음 판부터</b> 적용돼요</p>
+    <div class="cards" id="shop2" style="margin-bottom:16px;max-height:50vh;overflow-y:auto;width:min(88vw,440px);"></div>
+    <button class="btn" id="shopCloseBtn">닫기</button>
   </div>
   <div id="start" class="center">
     <h1>◆ SHAPE SURVIVOR</h1>
@@ -95,6 +103,9 @@ function resize(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
 }
 window.addEventListener('resize', resize); resize();
+window.addEventListener('orientationchange', ()=>setTimeout(resize,200));
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) resize(); });
+window.addEventListener('focus', resize);
 
 const rand = (a,b)=>a+Math.random()*(b-a);
 const dist2 = (a,b)=>{const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy;};
@@ -176,17 +187,22 @@ const metaLvl=k=>meta.lvls[k]||0;
 const metaCost=d=>Math.floor(d.base*Math.pow(d.mul, metaLvl(d.key)));
 const goldMult=()=>1+0.15*metaLvl('gold');
 function applyMeta(p){ for(const d of META_DEFS){ const l=metaLvl(d.key); if(l>0) d.apply(p,l); } }
-function renderShop(){
-  const gn=document.getElementById('goldNum'); if(gn) gn.textContent=meta.gold;
-  const dn=document.getElementById('diffNum'); if(dn) dn.textContent='Lv'+metaPower();
-  const bn=document.getElementById('bestNum'); if(bn) bn.textContent=best;
-  const box=document.getElementById('shop'); if(!box) return; box.innerHTML='';
+function fillShop(box){
+  box.innerHTML='';
   META_DEFS.forEach(d=>{ const l=metaLvl(d.key), c=metaCost(d), maxed=l>=d.max, can=!maxed&&meta.gold>=c;
     const el=document.createElement('div'); el.className='card'; if(!can) el.style.opacity=.5;
     el.innerHTML=`<div class="t">${d.name} <span style="opacity:.55;font-size:14px;">Lv${l}${maxed?' · MAX':''}</span></div><div class="d">${d.desc} · ${maxed?'최대 강화':('🪙 '+c)}</div>`;
     if(can) el.onclick=()=>{ initAudio(); meta.gold-=c; meta.lvls[d.key]=l+1; saveMeta(); renderShop(); tone(880,0.08,'square',0.14,1200); };
     box.appendChild(el);
   });
+}
+function renderShop(){
+  const gn=document.getElementById('goldNum'); if(gn) gn.textContent=meta.gold;
+  const g2=document.getElementById('goldNum2'); if(g2) g2.textContent=meta.gold;
+  const dn=document.getElementById('diffNum'); if(dn) dn.textContent='Lv'+metaPower();
+  const bn=document.getElementById('bestNum'); if(bn) bn.textContent=best;
+  const box=document.getElementById('shop'); if(box) fillShop(box);
+  const box2=document.getElementById('shop2'); if(box2) fillShop(box2);
 }
 function renderClasses(){
   const box=document.getElementById('classes'); if(!box) return; box.innerHTML='';
@@ -614,8 +630,8 @@ function playAd(cb){
 }
 document.getElementById('reviveBtn').onclick=()=>{ if(revivedThisRun||state!=='over') return; revivedThisRun=true; document.getElementById('reviveBtn').style.display='none';
   playAd(()=>{ meta.gold-=lastEarned; saveMeta(); // 부활 시 이번 판 골드는 최종 사망 때 재정산
-    player.hp=player.maxhp*0.6; enemies.length=0; bullets.length=0;
-    document.getElementById('over').classList.add('hidden'); document.getElementById('pauseBtn').style.display='block'; banner='부활! ▲'; bannerT=1.6; state='play'; lastTs=performance.now(); }); };
+    player.hp=player.maxhp*0.6; enemies.length=0; bullets.length=0; ebullets.length=0;
+    document.getElementById('over').classList.add('hidden'); document.getElementById('pauseBtn').style.display='block'; banner='부활! ▲'; bannerT=1.6; resize(); state='play'; lastTs=performance.now(); }); };
 document.getElementById('dblBtn').onclick=(e)=>{ if(goldDoubled) return; goldDoubled=true; const b=e.currentTarget; b.disabled=true; b.style.opacity=.5; b.textContent='광고 재생 중…';
   playAd(()=>{ meta.gold+=lastEarned; saveMeta(); renderShop(); b.textContent='✓ 골드 2배 완료'; tone(1046,0.12,'square',0.14,1568); }); };
 document.getElementById('muteBtn').onclick=(e)=>{ e.stopPropagation(); muted=!muted; if(!muted) initAudio(); e.currentTarget.textContent=muted?'🔇':'🔊'; };
@@ -625,6 +641,8 @@ document.getElementById('resetBtn').onclick=()=>{ if(confirm('모든 기록(골�
 document.getElementById('pauseBtn').onclick=()=>{ if(state!=='play') return; state='paused'; document.getElementById('paused').classList.remove('hidden'); };
 document.getElementById('resumeBtn').onclick=()=>{ if(state!=='paused') return; document.getElementById('paused').classList.add('hidden'); state='play'; lastTs=performance.now(); };
 document.getElementById('quitBtn').onclick=()=>{ document.getElementById('paused').classList.add('hidden'); document.getElementById('pauseBtn').style.display='none'; gameOver(); };
+document.getElementById('pauseShopBtn').onclick=()=>{ document.getElementById('paused').classList.add('hidden'); document.getElementById('ingameShop').classList.remove('hidden'); renderShop(); };
+document.getElementById('shopCloseBtn').onclick=()=>{ document.getElementById('ingameShop').classList.add('hidden'); document.getElementById('paused').classList.remove('hidden'); };
 renderShop(); renderClasses();
 
 // ---- 배경음악 (Web Audio 절차 생성, 은은한 루프) ----
