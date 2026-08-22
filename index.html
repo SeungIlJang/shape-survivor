@@ -170,7 +170,7 @@ let best=0; try{ best=parseInt(localStorage.getItem('ss_best')||'0')||0; }catch{
 let time, kills, spawnTimer, shake, lastTs, bossAlive, banner='', bannerT=0, startOffset=0, stage, stageTime, bossSpawned;
 const STAGE_BOSS_DELAY=32; // 스테이지 시작 후 보스 등장까지(초)
 // 난이도 시계 = 메타 오프셋 + 스테이지 진행 (스테이지가 오를수록 상승)
-function dtime(){ return startOffset + (stage-1)*45 + stageTime; }
+function dtime(){ return startOffset + (stage-1)*60 + stageTime; }
 function metaPower(){ return Object.values(meta.lvls).reduce((a,b)=>a+b,0); }
 
 function reset(){
@@ -223,11 +223,11 @@ function edgePos(){ const e=Math.floor(rand(0,4));
   if(e===0)return{x:rand(0,W),y:-20}; if(e===1)return{x:W+20,y:rand(0,H)};
   if(e===2)return{x:rand(0,W),y:H+20}; return{x:-20,y:rand(0,H)}; }
 function makeEnemy(x,y,type,diff){
-  const D=ETYPE[type], speedScale=1+Math.min(dtime()/240,0.9), s=rand(D.spd[0],D.spd[1])*speedScale;
+  const D=ETYPE[type], speedScale=1+Math.min(dtime()/170,1.5), s=rand(D.spd[0],D.spd[1])*speedScale;
   return {x,y,type,r:D.r,hp:D.hp*diff,maxhp:D.hp*diff,speed:s,dmg:D.dmg,color:D.color,gem:D.gem,big:!!D.big,shape:D.shape,t:rand(0,6.28)};
 }
 function spawnEnemy(){
-  const T=dtime(), diff=1+T/45, p=edgePos(), r=Math.random(); let type='normal';
+  const T=dtime(), diff=(1+T/34)*(1+(stage-1)*0.35), p=edgePos(), r=Math.random(); let type='normal';
   if(T>120 && r<0.12) type='splitter';
   else if(T>60 && r<0.30) type='weaver';
   else if(r<Math.min(0.05+T/400,0.28)) type='tank';
@@ -236,7 +236,7 @@ function spawnEnemy(){
 }
 function spawnBoss(){
   const p=edgePos(), diff=1+dtime()/35, e=makeEnemy(p.x,p.y,'tank',1);
-  e.type='boss'; e.boss=true; e.big=true; e.r=46; e.hp=e.maxhp=(240+(stage-1)*150)*diff; e.speed=40+stage*2; e.dmg=26+stage*4; e.gem=0;
+  e.type='boss'; e.boss=true; e.big=true; e.r=46; e.hp=e.maxhp=(260+(stage-1)*260)*diff; e.speed=40+stage*2; e.dmg=26+stage*6; e.gem=0;
   const kinds=['charge','summon','shoot']; e.bossKind=kinds[(stage-1)%3]; e.abilityCd=3; e.dashT=0;
   const km={charge:{c:'#ff5ce1',s:3,n:'돌진'},summon:{c:'#c96bff',s:5,n:'소환'},shoot:{c:'#ff8a3c',s:6,n:'탄막'}}[e.bossKind];
   e.color=km.c; e.shape=km.s;
@@ -364,8 +364,10 @@ function update(dt){
   // spawn (난이도 시계 기준)
   stageTime+=dt;
   const T=dtime();
-  spawnTimer-=dt; const interval=Math.max(0.28, 1.15 - T/70);
-  if(spawnTimer<=0){ spawnTimer=interval; spawnEnemy(); if(T>45&&Math.random()<.45) spawnEnemy(); if(T>110&&Math.random()<.4) spawnEnemy(); }
+  spawnTimer-=dt; const interval=Math.max(0.16, 1.1 - T/55);
+  if(spawnTimer<=0){ spawnTimer=interval; spawnEnemy();
+    const extra=Math.floor((stage-1)*0.7 + (T>60?1:0)); // 스테이지 높을수록 더 몰림
+    for(let i=0;i<extra;i++){ if(Math.random()<0.75) spawnEnemy(); } }
   // 스테이지 보스: 일정 시간 뒤 등장, 처치하면 스테이지 클리어
   if(!bossSpawned && stageTime>=STAGE_BOSS_DELAY){ spawnBoss(); bossSpawned=true; }
   if(bannerT>0) bannerT-=dt;
@@ -405,7 +407,7 @@ function update(dt){
     if(e.type==='weaver'){ const px=-Math.sin(ang),py=Math.cos(ang), w=Math.sin(e.t*4)*e.speed*0.9; vx+=px*w; vy+=py*w; }
     e.x+=vx*dt; e.y+=vy*dt;
     // hit player
-    const rr=(e.r+player.r); if(dist2(e,player)<rr*rr){ player.hp-=e.dmg*dt*3*(1+dtime()/140); shake=Math.min(shake+.4,8); hurtFlash=0.25; if(hurtSfxCd<=0){sfx.hurt(); hurtSfxCd=0.35;} }
+    const rr=(e.r+player.r); if(dist2(e,player)<rr*rr){ player.hp-=e.dmg*dt*3*(1+dtime()/95); shake=Math.min(shake+.4,8); hurtFlash=0.25; if(hurtSfxCd<=0){sfx.hurt(); hurtSfxCd=0.35;} }
   }
   // bullet-enemy collision
   for(const b of bullets){
@@ -433,7 +435,7 @@ function update(dt){
     if(d<(player.r+12)*(player.r+12)){ h.got=true; player.hp=Math.min(player.maxhp,player.hp+12); texts.push({x:h.x,y:h.y-10,vy:-42,life:0.8,str:'+12 HP',color:'#5cff9e',size:14}); tone(660,0.1,'sine',0.12,990); } }
   heals=heals.filter(h=>!h.got);
   // 성능 안전장치: 개체 수 상한
-  if(enemies.length>240) enemies.length=240;
+  if(enemies.length>300) enemies.length=300;
   if(bullets.length>300) bullets.splice(0, bullets.length-300);
   if(particles.length>240) particles.splice(0, particles.length-240);
   // 적 탄막
