@@ -559,9 +559,8 @@ document.getElementById('retryBtn').onclick=startGame;
 // 광고 보상 (부활 / 골드 2배) — 실제 광고 SDK는 앱 빌드 시 연동, 지금은 즉시 보상
 // 광고 재생 시뮬레이션(3초 대기 후 콜백) — 실제 AdMob은 앱빌드 시 이 자리에 연결
 function playAd(cb){
-  const ov=document.getElementById('adOverlay'), c=document.getElementById('adCount');
-  let n=3; c.textContent='잠시만 기다려요 ('+n+')'; ov.classList.remove('hidden');
-  const iv=setInterval(()=>{ n--; if(n<=0){ clearInterval(iv); ov.classList.add('hidden'); cb(); } else c.textContent='잠시만 기다려요 ('+n+')'; }, 1000);
+  alert('🎬 광고 기다려요\n\n(테스트용 · 확인을 누르면 보상이 지급돼요)');
+  cb();
 }
 document.getElementById('reviveBtn').onclick=()=>{ if(revivedThisRun||state!=='over') return; revivedThisRun=true; document.getElementById('reviveBtn').style.display='none';
   playAd(()=>{ meta.gold-=lastEarned; saveMeta(); // 부활 시 이번 판 골드는 최종 사망 때 재정산
