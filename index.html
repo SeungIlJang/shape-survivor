@@ -43,7 +43,7 @@
     <h1 style="font-size:24px;">🏪 영구 강화</h1>
     <div style="font-weight:800;margin-bottom:6px;">🪙 <span id="goldNum2">0</span></div>
     <p class="sub" style="margin-bottom:10px;">⚡ 지금 강화하면 <b>즉시 적용</b>돼요!</p>
-    <button class="btn" id="potionBtn" style="margin-bottom:12px;background:#c0392b;box-shadow:0 6px 0 #7d2419;">❤️ 체력 물약 · 50% 회복 (🪙 20)</button>
+    <button class="btn" id="potionBtn" style="margin-bottom:12px;background:#c0392b;box-shadow:0 6px 0 #7d2419;">❤️ 체력 물약 · 30% 회복 (🪙 100)</button>
     <div class="cards" id="shop2" style="margin-bottom:16px;max-height:44vh;overflow-y:auto;width:min(88vw,440px);"></div>
     <button class="btn" id="shopCloseBtn">닫기</button>
   </div>
@@ -649,8 +649,8 @@ document.getElementById('resumeBtn').onclick=()=>{ if(state!=='paused') return; 
 document.getElementById('quitBtn').onclick=()=>{ document.getElementById('paused').classList.add('hidden'); document.getElementById('pauseBtn').style.display='none'; gameOver(); };
 document.getElementById('pauseShopBtn').onclick=()=>{ document.getElementById('paused').classList.add('hidden'); document.getElementById('ingameShop').classList.remove('hidden'); renderShop(); };
 document.getElementById('shopCloseBtn').onclick=()=>{ document.getElementById('ingameShop').classList.add('hidden'); document.getElementById('paused').classList.remove('hidden'); };
-document.getElementById('potionBtn').onclick=(e)=>{ if(!player) return; if(meta.gold<20){ alert('골드가 부족해요! 🪙20 필요'); return; }
-  meta.gold-=20; player.hp=Math.min(player.maxhp, player.hp+player.maxhp*0.5); saveMeta(); renderShop(); tone(660,0.12,'sine',0.15,990); };
+document.getElementById('potionBtn').onclick=(e)=>{ if(!player) return; if(meta.gold<100){ alert('골드가 부족해요! 🪙100 필요'); return; }
+  meta.gold-=100; player.hp=Math.min(player.maxhp, player.hp+player.maxhp*0.3); saveMeta(); renderShop(); tone(660,0.12,'sine',0.15,990); };
 renderShop(); renderClasses();
 
 // ---- 배경음악 (Web Audio 절차 생성, 은은한 루프) ----
