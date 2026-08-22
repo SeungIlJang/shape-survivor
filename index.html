@@ -206,6 +206,7 @@ function renderShop(){
   const bn=document.getElementById('bestNum'); if(bn) bn.textContent=best;
   const box=document.getElementById('shop'); if(box) fillShop(box);
   const box2=document.getElementById('shop2'); if(box2) fillShop(box2);
+  const pb=document.getElementById('potionBtn'); if(pb && player) pb.textContent='❤️ 체력 물약 · 30% 회복 (🪙 '+potionCost()+')';
 }
 function renderClasses(){
   const box=document.getElementById('classes'); if(!box) return; box.innerHTML='';
@@ -315,7 +316,7 @@ function hurtEnemy(e,dmg,color){
   if(e.dead) return; e.flash=0.06; e.hp-=dmg;
   if(e.hp<=0){ e.dead=true; kills++;
     combo++; comboTimer=2.5; if(combo>maxCombo) maxCombo=combo;
-    { const g=Math.round((e.boss?20:1)*(1+(player.level-1)*0.2)); meta.gold+=g; runGold+=g; } // 실시간 골드(레벨↑ 시 증가)
+    { const g=e.boss?20:1; meta.gold+=g; runGold+=g; } // 실시간 골드
     texts.push({x:e.x,y:e.y-e.r,vy:-46,life:0.7,str:e.boss?'BOSS!':'+'+(e.gem||1),color:e.boss?'#ff5ce1':'#9dffbf',size:e.boss?22:14});
     burst(e.x,e.y,color||e.color,e.big?18:8); shake=Math.min(shake+(e.boss?4:1),12);
     e.big?sfx.killBig():sfx.kill();
@@ -649,8 +650,10 @@ document.getElementById('resumeBtn').onclick=()=>{ if(state!=='paused') return; 
 document.getElementById('quitBtn').onclick=()=>{ document.getElementById('paused').classList.add('hidden'); document.getElementById('pauseBtn').style.display='none'; gameOver(); };
 document.getElementById('pauseShopBtn').onclick=()=>{ document.getElementById('paused').classList.add('hidden'); document.getElementById('ingameShop').classList.remove('hidden'); renderShop(); };
 document.getElementById('shopCloseBtn').onclick=()=>{ document.getElementById('ingameShop').classList.add('hidden'); document.getElementById('paused').classList.remove('hidden'); };
-document.getElementById('potionBtn').onclick=(e)=>{ if(!player) return; if(meta.gold<100){ alert('골드가 부족해요! 🪙100 필요'); return; }
-  meta.gold-=100; player.hp=Math.min(player.maxhp, player.hp+player.maxhp*0.3); saveMeta(); renderShop(); tone(660,0.12,'sine',0.15,990); };
+function potionCost(){ return 100 + Math.max(0,(player?player.level:1)-1)*40; } // 레벨 따라 가격 상승
+document.getElementById('potionBtn').onclick=(e)=>{ if(!player) return; const c=potionCost();
+  if(meta.gold<c){ alert('골드가 부족해요! 🪙'+c+' 필요'); return; }
+  meta.gold-=c; player.hp=Math.min(player.maxhp, player.hp+player.maxhp*0.3); saveMeta(); renderShop(); tone(660,0.12,'sine',0.15,990); };
 renderShop(); renderClasses();
 
 // ---- 배경음악 (Web Audio 절차 생성, 은은한 루프) ----
