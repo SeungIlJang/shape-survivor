@@ -499,7 +499,7 @@ function update(dt){
     const d=dist2(g,player);
     if(d<player.magnet*player.magnet){ const a=Math.atan2(player.y-g.y,player.x-g.x); const sp=380; g.x+=Math.cos(a)*sp*dt; g.y+=Math.sin(a)*sp*dt; }
     if(d<(player.r+8)*(player.r+8)){ g.got=true; player.xp+=g.v; if(gemSfxCd<=0){sfx.gem(); gemSfxCd=0.04;}
-      if(player.xp>=player.xpNeed){ player.xp-=player.xpNeed; player.level++; player.xpNeed=Math.floor(player.xpNeed*1.35+3); openLevelUp(); } }
+      if(player.xp>=player.xpNeed){ player.xp-=player.xpNeed; player.level++; player.xpNeed=Math.floor(player.xpNeed*1.26+3); openLevelUp(); } }
   }
   // 힐 획득
   for(const h of heals){ const d=dist2(h,player);
