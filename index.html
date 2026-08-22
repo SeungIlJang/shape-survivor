@@ -163,11 +163,11 @@ function renderShop(){
 
 // ---- Game State ----
 let state = 'start'; // start | play | levelup | over
-let player, enemies, bullets, gems, particles, texts, heals;
+let player, enemies, bullets, gems, particles, texts, heals, ebullets;
 let flashT=0, hurtFlash=0, lastEarned=0, goldDoubled=false, revivedThisRun=false;
 let best=0; try{ best=parseInt(localStorage.getItem('ss_best')||'0')||0; }catch{}
 let time, kills, spawnTimer, shake, lastTs, bossAlive, banner='', bannerT=0, startOffset=0, stage, stageTime, bossSpawned;
-const STAGE_BOSS_DELAY=38; // 스테이지 시작 후 보스 등장까지(초)
+const STAGE_BOSS_DELAY=32; // 스테이지 시작 후 보스 등장까지(초)
 // 난이도 시계 = 메타 오프셋 + 스테이지 진행 (스테이지가 오를수록 상승)
 function dtime(){ return startOffset + (stage-1)*45 + stageTime; }
 function metaPower(){ return Object.values(meta.lvls).reduce((a,b)=>a+b,0); }
@@ -178,7 +178,7 @@ function reset(){
     pierce:0, level:1, xp:0, xpNeed:5, magnet:90, lifesteal:0,
     weapons:{ bolt:1 }, timers:{ bolt:0 }, orbs:[], novas:[], orbAngle:0, evolved:{} };
   applyMeta(player);
-  enemies=[]; bullets=[]; gems=[]; particles=[]; texts=[]; heals=[];
+  enemies=[]; bullets=[]; gems=[]; particles=[]; texts=[]; heals=[]; ebullets=[];
   flashT=0; hurtFlash=0; goldDoubled=false; revivedThisRun=false;
   time=0; kills=0; spawnTimer=0; shake=0; bossAlive=false; banner='STAGE 1 ▶ 보스 처치!'; bannerT=2.6;
   stage=1; stageTime=0; bossSpawned=false;
@@ -235,8 +235,11 @@ function spawnEnemy(){
 }
 function spawnBoss(){
   const p=edgePos(), diff=1+dtime()/35, e=makeEnemy(p.x,p.y,'tank',1);
-  e.type='boss'; e.boss=true; e.big=true; e.r=46; e.hp=e.maxhp=(240+(stage-1)*150)*diff; e.speed=42+stage*2; e.dmg=28+stage*4; e.color='#ff5ce1'; e.gem=0; e.shape=6;
-  enemies.push(e); bossAlive=true; banner='⬢  B O S S'; bannerT=2.2; tone(70,0.5,'sawtooth',0.25,50); noise(0.4,0.3);
+  e.type='boss'; e.boss=true; e.big=true; e.r=46; e.hp=e.maxhp=(240+(stage-1)*150)*diff; e.speed=40+stage*2; e.dmg=26+stage*4; e.gem=0;
+  const kinds=['charge','summon','shoot']; e.bossKind=kinds[(stage-1)%3]; e.abilityCd=3; e.dashT=0;
+  const km={charge:{c:'#ff5ce1',s:3,n:'돌진'},summon:{c:'#c96bff',s:5,n:'소환'},shoot:{c:'#ff8a3c',s:6,n:'탄막'}}[e.bossKind];
+  e.color=km.c; e.shape=km.s;
+  enemies.push(e); bossAlive=true; banner='⬢ BOSS · '+km.n+'형'; bannerT=2.4; tone(70,0.5,'sawtooth',0.25,50); noise(0.4,0.3);
 }
 
 // ---- Combat ----
@@ -364,8 +367,17 @@ function update(dt){
   // enemies
   for(const e of enemies){
     e.t+=dt;
+    // 보스 능력
+    if(e.boss){ e.abilityCd-=dt; if(e.dashT>0) e.dashT-=dt;
+      if(e.abilityCd<=0){
+        if(e.bossKind==='charge'){ e.dashT=0.7; e.abilityCd=3.0; banner='돌진!'; bannerT=0.7; }
+        else if(e.bossKind==='summon'){ for(let i=0;i<3;i++){ const a=rand(0,6.28); enemies.push(makeEnemy(e.x+Math.cos(a)*44,e.y+Math.sin(a)*44,'fast',1+dtime()/60)); } e.abilityCd=4.5; tone(300,0.15,'square',0.12); }
+        else if(e.bossKind==='shoot'){ const b=Math.atan2(player.y-e.y,player.x-e.x); for(let k=-1;k<=1;k++){ const a=b+k*0.26; ebullets.push({x:e.x,y:e.y,vx:Math.cos(a)*270,vy:Math.sin(a)*270,r:8,dmg:e.dmg*0.5,life:3}); } e.abilityCd=2.2; tone(200,0.1,'sawtooth',0.12,120); }
+      }
+    }
     const ang=Math.atan2(player.y-e.y,player.x-e.x);
-    let vx=Math.cos(ang)*e.speed, vy=Math.sin(ang)*e.speed;
+    let spd=e.speed; if(e.boss&&e.dashT>0) spd*=3.3;
+    let vx=Math.cos(ang)*spd, vy=Math.sin(ang)*spd;
     if(e.type==='weaver'){ const px=-Math.sin(ang),py=Math.cos(ang), w=Math.sin(e.t*4)*e.speed*0.9; vx+=px*w; vy+=py*w; }
     e.x+=vx*dt; e.y+=vy*dt;
     // hit player
@@ -399,6 +411,10 @@ function update(dt){
   if(enemies.length>240) enemies.length=240;
   if(bullets.length>300) bullets.splice(0, bullets.length-300);
   if(particles.length>240) particles.splice(0, particles.length-240);
+  // 적 탄막
+  for(const b of ebullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
+    const rr=b.r+player.r; if(dist2(b,player)<rr*rr){ player.hp-=b.dmg; b.life=0; hurtFlash=0.3; shake=Math.min(shake+1,8); if(hurtSfxCd<=0){sfx.hurt();hurtSfxCd=0.35;} } }
+  ebullets=ebullets.filter(b=>b.life>0 && b.x>-40&&b.x<W+40&&b.y>-40&&b.y<H+40);
   // particles
   for(const p of particles){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=.9; p.vy*=.9; p.life-=dt; }
   // floating texts + 이펙트 타이머
@@ -439,6 +455,8 @@ function render(){
   for(const b of bullets){ const s=b.size||3; ctx.fillStyle=b.color||'#bfe3ff'; ctx.fillRect(b.x-s,b.y-s,s*2,s*2); }
   // orbit (몸 주위 도는 육각형)
   for(const o of player.orbs){ poly(o.x,o.y,o.evo?13:9,6,time*(o.evo?5:3),o.evo?'#ff8ae0':'#ffe08a'); }
+  // 적 탄막
+  for(const b of ebullets){ ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fillStyle='#ff8a3c'; ctx.fill(); }
   // enemies (타입별 도형/색)
   for(const e of enemies){
     const col=e.flash>0?'#ffffff':e.color;
