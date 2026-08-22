@@ -42,8 +42,11 @@
     <h1>◆ SHAPE SURVIVOR</h1>
     <div style="font-size:20px;font-weight:800;margin-bottom:4px;">🪙 <span id="goldNum">0</span> &nbsp;·&nbsp; ⚔️ 시작강도 <span id="diffNum">0</span></div>
     <div style="font-size:14px;opacity:.8;margin-bottom:8px;">🏆 최고 생존 <span id="bestNum">0</span>초</div>
-    <p class="sub" style="margin-bottom:14px;">강화할수록 초반부터 더 빠르고 격렬해져요</p>
-    <div class="cards" id="shop" style="margin-bottom:18px;max-height:42vh;overflow-y:auto;width:min(88vw,440px);"></div>
+    <p class="sub" style="margin-bottom:10px;">강화할수록 초반부터 더 빠르고 격렬해져요</p>
+    <div style="font-size:14px;opacity:.85;margin-bottom:6px;font-weight:700;">🎭 직업 선택</div>
+    <div class="cards" id="classes" style="margin-bottom:12px;max-height:26vh;overflow-y:auto;width:min(88vw,440px);"></div>
+    <div style="font-size:14px;opacity:.85;margin-bottom:6px;font-weight:700;">🏪 영구 강화</div>
+    <div class="cards" id="shop" style="margin-bottom:16px;max-height:28vh;overflow-y:auto;width:min(88vw,440px);"></div>
     <button class="btn" id="startBtn">시작</button>
     <button id="resetBtn" style="margin-top:14px;pointer-events:auto;background:none;border:1px solid #3a3f55;color:#9aa;border-radius:10px;padding:8px 16px;font-size:13px;cursor:pointer;">🔄 처음부터 (기록 초기화)</button>
   </div>
@@ -141,7 +144,20 @@ const META_DEFS=[
   {key:'magnet',name:'🧲 자석 범위',desc:'+12% 흡수',    base:30, mul:1.6, max:6, apply:(p,l)=>{p.magnet*=(1+0.12*l);}},
   {key:'gold', name:'🪙 골드 획득', desc:'+15% 획득량',  base:50, mul:1.8, max:6, apply:()=>{}},
 ];
-function loadMeta(){ try{ const m=JSON.parse(localStorage.getItem('ss_meta')); if(m&&m.lvls) return m; }catch{} return {gold:0, lvls:{}}; }
+function loadMeta(){ try{ const m=JSON.parse(localStorage.getItem('ss_meta')); if(m&&m.lvls){ if(!m.cls) m.cls={ranger:1}; if(!m.sel) m.sel='ranger'; return m; } }catch{} return {gold:0, lvls:{}, cls:{ranger:1}, sel:'ranger'}; }
+// 직업(클래스) 정의
+const CLASSES=[
+  {key:'ranger',  name:'레인저', icon:'🔺', cost:0,   weapon:'bolt',  desc:'볼트 · 사거리+20%, 연사+10% (입문)', apply:p=>{ p.range*=1.2; p.fireRate*=1.1; }},
+  {key:'warrior', name:'전사',   icon:'🟥', cost:300, weapon:'slash', desc:'참격 · 체력+50%, 흡혈, 공격+15% (탱커)', apply:p=>{ p.maxhp*=1.5; p.lifesteal+=1; p.dmg*=1.15; p.speed*=0.95; }},
+  {key:'mage',    name:'마법사', icon:'🟣', cost:500, weapon:'nova',  desc:'충격파 · 공격+35%, 체력-25% (유리대포)', apply:p=>{ p.dmg*=1.35; p.maxhp*=0.75; }},
+  {key:'guardian',name:'수호자', icon:'🟡', cost:500, weapon:'orbit', desc:'궤도 · 체력+25%, 자석+50%, 궤도+1 (자동방어)', apply:p=>{ p.maxhp*=1.25; p.magnet*=1.5; p.weapons.orbit=2; }},
+];
+function applyClass(p){
+  const c=CLASSES.find(x=>x.key===meta.sel)||CLASSES[0];
+  p.weapons={}; p.timers={};
+  p.weapons[c.weapon]=1; if(c.weapon!=='orbit') p.timers[c.weapon]=0;
+  c.apply(p); p.hp=p.maxhp;
+}
 let meta = loadMeta();
 function saveMeta(){ try{ localStorage.setItem('ss_meta', JSON.stringify(meta)); }catch{} }
 const metaLvl=k=>meta.lvls[k]||0;
@@ -157,6 +173,21 @@ function renderShop(){
     const el=document.createElement('div'); el.className='card'; if(!can) el.style.opacity=.5;
     el.innerHTML=`<div class="t">${d.name} <span style="opacity:.55;font-size:14px;">Lv${l}${maxed?' · MAX':''}</span></div><div class="d">${d.desc} · ${maxed?'최대 강화':('🪙 '+c)}</div>`;
     if(can) el.onclick=()=>{ initAudio(); meta.gold-=c; meta.lvls[d.key]=l+1; saveMeta(); renderShop(); tone(880,0.08,'square',0.14,1200); };
+    box.appendChild(el);
+  });
+}
+function renderClasses(){
+  const box=document.getElementById('classes'); if(!box) return; box.innerHTML='';
+  CLASSES.forEach(c=>{ const owned=meta.cls[c.key], sel=meta.sel===c.key;
+    const el=document.createElement('div'); el.className='card';
+    if(sel) el.style.borderColor='#5ce1ff'; if(!owned) el.style.opacity=.6;
+    el.innerHTML=`<div class="t">${c.icon} ${c.name} ${sel?'✓ 선택됨':(owned?'':'🔒 🪙'+c.cost)}</div><div class="d">${c.desc}</div>`;
+    el.onclick=()=>{ initAudio();
+      if(owned){ meta.sel=c.key; tone(700,0.08,'square',0.12); }
+      else if(meta.gold>=c.cost){ meta.gold-=c.cost; meta.cls[c.key]=1; meta.sel=c.key; tone(880,0.12,'square',0.16,1300); }
+      else { alert('골드가 부족해요! 🪙'+c.cost+' 필요'); return; }
+      saveMeta(); renderClasses(); renderShop();
+    };
     box.appendChild(el);
   });
 }
@@ -178,7 +209,7 @@ function reset(){
     speed:210, fireRate:2.2, dmg:12, bulletSpeed:430, range:280,
     pierce:0, level:1, xp:0, xpNeed:5, magnet:90, lifesteal:0,
     weapons:{ bolt:1 }, timers:{ bolt:0 }, orbs:[], novas:[], orbAngle:0, evolved:{} };
-  applyMeta(player);
+  applyMeta(player); applyClass(player);
   enemies=[]; bullets=[]; gems=[]; particles=[]; texts=[]; heals=[]; ebullets=[];
   flashT=0; hurtFlash=0; goldDoubled=false; revivedThisRun=false; combo=0; comboTimer=0; maxCombo=0;
   time=0; kills=0; spawnTimer=0; shake=0; bossAlive=false; banner='STAGE 1 ▶ 보스 처치!'; bannerT=2.6;
@@ -569,13 +600,13 @@ document.getElementById('reviveBtn').onclick=()=>{ if(revivedThisRun||state!=='o
 document.getElementById('dblBtn').onclick=(e)=>{ if(goldDoubled) return; goldDoubled=true; const b=e.currentTarget; b.disabled=true; b.style.opacity=.5; b.textContent='광고 재생 중…';
   playAd(()=>{ meta.gold+=lastEarned; saveMeta(); renderShop(); b.textContent='✓ 골드 2배 완료'; tone(1046,0.12,'square',0.14,1568); }); };
 document.getElementById('muteBtn').onclick=(e)=>{ e.stopPropagation(); muted=!muted; if(!muted) initAudio(); e.currentTarget.textContent=muted?'🔇':'🔊'; };
-document.getElementById('shopBtn').onclick=()=>{ document.getElementById('over').classList.add('hidden'); document.getElementById('start').classList.remove('hidden'); state='start'; renderShop(); };
-document.getElementById('resetBtn').onclick=()=>{ if(confirm('모든 기록(골드·강화)을 초기화할까요? 되돌릴 수 없어요.')){ meta={gold:0,lvls:{}}; saveMeta(); renderShop(); tone(200,0.2,'sawtooth',0.15,80); } };
+document.getElementById('shopBtn').onclick=()=>{ document.getElementById('over').classList.add('hidden'); document.getElementById('start').classList.remove('hidden'); state='start'; renderShop(); renderClasses(); };
+document.getElementById('resetBtn').onclick=()=>{ if(confirm('모든 기록(골드·강화)을 초기화할까요? 되돌릴 수 없어요.')){ meta={gold:0,lvls:{},cls:{ranger:1},sel:'ranger'}; saveMeta(); renderShop(); renderClasses(); tone(200,0.2,'sawtooth',0.15,80); } };
 // 일시정지
 document.getElementById('pauseBtn').onclick=()=>{ if(state!=='play') return; state='paused'; document.getElementById('paused').classList.remove('hidden'); };
 document.getElementById('resumeBtn').onclick=()=>{ if(state!=='paused') return; document.getElementById('paused').classList.add('hidden'); state='play'; lastTs=performance.now(); };
 document.getElementById('quitBtn').onclick=()=>{ document.getElementById('paused').classList.add('hidden'); document.getElementById('pauseBtn').style.display='none'; gameOver(); };
-renderShop();
+renderShop(); renderClasses();
 
 // ---- 배경음악 (Web Audio 절차 생성, 은은한 루프) ----
 let bgmStep=0;
