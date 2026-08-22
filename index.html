@@ -650,7 +650,7 @@ document.getElementById('resumeBtn').onclick=()=>{ if(state!=='paused') return; 
 document.getElementById('quitBtn').onclick=()=>{ document.getElementById('paused').classList.add('hidden'); document.getElementById('pauseBtn').style.display='none'; gameOver(); };
 document.getElementById('pauseShopBtn').onclick=()=>{ document.getElementById('paused').classList.add('hidden'); document.getElementById('ingameShop').classList.remove('hidden'); renderShop(); };
 document.getElementById('shopCloseBtn').onclick=()=>{ document.getElementById('ingameShop').classList.add('hidden'); document.getElementById('paused').classList.remove('hidden'); };
-function potionCost(){ return 100 + Math.max(0,(player?player.level:1)-1)*40; } // 레벨 따라 가격 상승
+function potionCost(){ return 100 + Math.max(0,(player?player.level:1)-1)*50; } // 레벨 따라 가격 상승
 document.getElementById('potionBtn').onclick=(e)=>{ if(!player) return; const c=potionCost();
   if(meta.gold<c){ alert('골드가 부족해요! 🪙'+c+' 필요'); return; }
   meta.gold-=c; player.hp=Math.min(player.maxhp, player.hp+player.maxhp*0.3); saveMeta(); renderShop(); tone(660,0.12,'sine',0.15,990); };
