@@ -165,6 +165,7 @@ function renderShop(){
 let state = 'start'; // start | play | levelup | over
 let player, enemies, bullets, gems, particles, texts, heals, ebullets;
 let flashT=0, hurtFlash=0, lastEarned=0, goldDoubled=false, revivedThisRun=false;
+let combo=0, comboTimer=0, maxCombo=0;
 let best=0; try{ best=parseInt(localStorage.getItem('ss_best')||'0')||0; }catch{}
 let time, kills, spawnTimer, shake, lastTs, bossAlive, banner='', bannerT=0, startOffset=0, stage, stageTime, bossSpawned;
 const STAGE_BOSS_DELAY=32; // 스테이지 시작 후 보스 등장까지(초)
@@ -179,7 +180,7 @@ function reset(){
     weapons:{ bolt:1 }, timers:{ bolt:0 }, orbs:[], novas:[], orbAngle:0, evolved:{} };
   applyMeta(player);
   enemies=[]; bullets=[]; gems=[]; particles=[]; texts=[]; heals=[]; ebullets=[];
-  flashT=0; hurtFlash=0; goldDoubled=false; revivedThisRun=false;
+  flashT=0; hurtFlash=0; goldDoubled=false; revivedThisRun=false; combo=0; comboTimer=0; maxCombo=0;
   time=0; kills=0; spawnTimer=0; shake=0; bossAlive=false; banner='STAGE 1 ▶ 보스 처치!'; bannerT=2.6;
   stage=1; stageTime=0; bossSpawned=false;
   startOffset = metaPower()*1.4;             // 강화 많을수록 초반 강도 살짝↑ (완만하게)
@@ -249,6 +250,7 @@ function spawnBolt(ang,dmg,speed,pierce,size,color){ bullets.push({x:player.x,y:
 function hurtEnemy(e,dmg,color){
   if(e.dead) return; e.flash=0.06; e.hp-=dmg;
   if(e.hp<=0){ e.dead=true; kills++;
+    combo++; comboTimer=2.5; if(combo>maxCombo) maxCombo=combo;
     texts.push({x:e.x,y:e.y-e.r,vy:-46,life:0.7,str:e.boss?'BOSS!':'+'+(e.gem||1),color:e.boss?'#ff5ce1':'#9dffbf',size:e.boss?22:14});
     burst(e.x,e.y,color||e.color,e.big?18:8); shake=Math.min(shake+(e.boss?4:1),12);
     e.big?sfx.killBig():sfx.kill();
@@ -262,8 +264,14 @@ function hurtEnemy(e,dmg,color){
       stageClear(); }
   }
 }
+// 폭발(범위 피해)
+function explode(x,y,dmg,radius,color){
+  for(const e of enemies){ if(e.dead) continue; const dx=e.x-x,dy=e.y-y; if(dx*dx+dy*dy<(radius+e.r)*(radius+e.r)) hurtEnemy(e,dmg,color||'#ffd25c'); }
+  for(let i=0;i<14;i++){ const a=rand(0,6.28),s=rand(60,180); particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.3,.5),color:color||'#ffd25c'}); }
+  shake=Math.min(shake+2,10);
+}
 // 무기 정의 (Lv6 만렙 → 진화)
-const EVOLVE = { bolt:'레일건 ⚡', spread:'스플릿링 ◍', nova:'초신성 ✵', orbit:'톱날궤도 ⚙' };
+const EVOLVE = { bolt:'레일건 ⚡', spread:'스플릿링 ◍', nova:'초신성 ✵', orbit:'톱날궤도 ⚙', slash:'대참격 ✷', homing:'군집미사일 ✺' };
 const WEAPONS = {
   bolt:{ name:'볼트', icon:'🔹', desc:'가까운 적에게 발사 (강화 시 다발)', max:6,
     interval:(p,l)=>(p.evolved.bolt?0.7:1)/(p.fireRate*(1+0.12*(l-1))),
@@ -281,6 +289,18 @@ const WEAPONS = {
     fire:(p,l)=>{ const evo=p.evolved.nova; p.novas.push({x:p.x,y:p.y,r:12,maxr:(110+30*l)*(evo?1.8:1),dmg:p.dmg*(1.2+0.35*l)*(evo?1.7:1),hit:new Set(),evo}); noise(0.2,0.22); tone(evo?90:120,0.24,'sine',0.22,45); } },
   orbit:{ name:'궤도', icon:'🟡', desc:'몸을 도는 도형이 적을 갈아버림', max:6,
     interval:()=>Infinity, fire:()=>{} },
+  slash:{ name:'참격', icon:'〰️', desc:'주변 적을 근접 참격 (범위)', max:6,
+    interval:(p,l)=>Math.max(0.5,1.0-0.07*(l-1)),
+    fire:(p,l)=>{ const R=(70+10*l)*(p.evolved.slash?1.4:1), dmg=p.dmg*(1.1+0.2*(l-1))*(p.evolved.slash?1.9:1); let hit=0;
+      for(const e of enemies){ if(e.dead) continue; if(dist2(e,player)<(R+e.r)*(R+e.r)){ hurtEnemy(e,dmg,'#ffffff'); hit++; } }
+      for(let i=0;i<18;i++){ const a=i/18*Math.PI*2; particles.push({x:player.x+Math.cos(a)*R,y:player.y+Math.sin(a)*R,vx:Math.cos(a)*50,vy:Math.sin(a)*50,life:0.22,color:'#cdfffb'}); }
+      if(hit) sfx.hit(); } },
+  homing:{ name:'유도미사일', icon:'🚀', desc:'적을 쫓아가 폭발 (범위 피해)', max:6,
+    interval:(p,l)=>Math.max(0.55,1.3-0.11*(l-1)),
+    fire:(p,l)=>{ const e=nearestEnemy(); const base=e?Math.atan2(e.y-p.y,e.x-p.x):-Math.PI/2;
+      const cnt=1+(p.evolved.homing?1:0);
+      for(let i=0;i<cnt;i++){ const a=base+(i-(cnt-1)/2)*0.3; bullets.push({x:p.x,y:p.y,vx:Math.cos(a)*250,vy:Math.sin(a)*250,dmg:p.dmg*(1.4+0.3*(l-1)),life:2.4,pierce:0,size:5,color:'#ffd25c',homing:true,blast:(46+8*l)*(p.evolved.homing?1.4:1)}); }
+      sfx.shoot(); } },
 };
 function weaponFireTick(dt){
   for(const key in player.weapons){ if(key==='orbit') continue; const w=WEAPONS[key], l=player.weapons[key];
@@ -362,8 +382,12 @@ function update(dt){
   player.novas=player.novas.filter(nv=>nv.r<nv.maxr);
   // 궤도 접촉 데미지
   for(const o of player.orbs){ for(const e of enemies){ if(e.dead) continue; const rr=e.r+9; if(dist2(o,e)<rr*rr) hurtEnemy(e, o.dmg*dt*4, '#ffe08a'); } }
-  // bullets
-  for(const b of bullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt; }
+  // bullets (유도미사일은 적 추적)
+  for(const b of bullets){
+    if(b.homing){ let bt=null,bd=1e9; for(const e of enemies){ if(e.dead) continue; const d=dist2(e,b); if(d<bd){bd=d;bt=e;} }
+      if(bt){ const sp=Math.hypot(b.vx,b.vy)||250, cur=Math.atan2(b.vy,b.vx), tgt=Math.atan2(bt.y-b.y,bt.x-b.x);
+        let d=((tgt-cur+Math.PI*3)%(Math.PI*2))-Math.PI; d=Math.max(-0.14,Math.min(0.14,d)); const na=cur+d; b.vx=Math.cos(na)*sp; b.vy=Math.sin(na)*sp; } }
+    b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt; }
   // enemies
   for(const e of enemies){
     e.t+=dt;
@@ -388,6 +412,7 @@ function update(dt){
     for(const e of enemies){
       if(e.dead) continue; const rr=e.r+(b.size||4);
       if(dist2(b,e)<rr*rr){
+        if(b.homing){ explode(b.x,b.y,b.dmg,b.blast,'#ffd25c'); b.life=0; break; }
         burst(b.x,b.y,'#8fd0ff',3); sfx.hit();
         if(b.pierce>0){b.pierce--;} else {b.life=0;}
         hurtEnemy(e, b.dmg);
@@ -422,6 +447,7 @@ function update(dt){
   texts=texts.filter(tx=>tx.life>0);
   for(const e of enemies){ if(e.flash>0) e.flash-=dt; }
   if(flashT>0) flashT-=dt; if(hurtFlash>0) hurtFlash-=dt;
+  if(comboTimer>0){ comboTimer-=dt; if(comboTimer<=0) combo=0; }
   // cull
   enemies=enemies.filter(e=>!e.dead);
   bullets=bullets.filter(b=>b.life>0 && b.x>-30&&b.x<W+30&&b.y>-30&&b.y<H+30);
@@ -496,6 +522,8 @@ function render(){
   if(bossAlive){ const b=enemies.find(e=>e.boss); if(b){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(30,80,W-60,10); ctx.fillStyle='#ff5ce1'; ctx.fillRect(30,80,(W-60)*Math.max(0,b.hp/b.maxhp),10); ctx.fillStyle='#fff'; ctx.font='bold 11px system-ui'; ctx.textAlign='center'; ctx.fillText('⬢ BOSS',W/2,76); ctx.textAlign='left'; } }
   // 배너
   if(bannerT>0){ ctx.globalAlpha=Math.min(1,bannerT); ctx.fillStyle='#ff5ce1'; ctx.font='bold 30px system-ui'; ctx.textAlign='center'; ctx.fillText(banner,W/2,H*0.28); ctx.textAlign='left'; ctx.globalAlpha=1; }
+  // 콤보
+  if(combo>=5){ ctx.globalAlpha=Math.max(0.3,Math.min(1,comboTimer)); ctx.fillStyle=combo>=30?'#ff5ce1':'#ffd25c'; ctx.font='bold '+(22+Math.min(combo,40))+'px system-ui'; ctx.textAlign='center'; ctx.fillText(combo+' COMBO', W/2, H*0.4); ctx.globalAlpha=1; ctx.textAlign='left'; }
   // joystick
   if(dragging){ ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(origin.x,origin.y,60,0,Math.PI*2); ctx.stroke();
     ctx.fillStyle='rgba(255,255,255,.4)'; ctx.beginPath(); ctx.arc(origin.x+moveDir.x*40*(moveDir.mag||1),origin.y+moveDir.y*40*(moveDir.mag||1),22,0,Math.PI*2); ctx.fill(); }
@@ -516,9 +544,9 @@ function gameOver(){ state='over'; sfx.over();
   document.getElementById('pauseBtn').style.display='none';
   const surv=Math.floor(time); let rec='';
   if(surv>best){ best=surv; try{localStorage.setItem('ss_best',best);}catch{} rec=' 🏆신기록!'; }
-  lastEarned=Math.floor((kills + time*0.5) * goldMult());
+  lastEarned=Math.floor((kills + time*0.5 + maxCombo) * goldMult());
   meta.gold+=lastEarned; saveMeta(); renderShop();
-  document.getElementById('overStats').innerHTML=`STAGE <b>${stage}</b> · 생존 <b>${surv}초</b>${rec} · 처치 <b>${kills}</b><br/>🏆 최고 ${best}초 &nbsp;·&nbsp; 🪙 <b>+${lastEarned}</b> (보유 ${meta.gold})`;
+  document.getElementById('overStats').innerHTML=`STAGE <b>${stage}</b> · 생존 <b>${surv}초</b>${rec} · 처치 <b>${kills}</b> · 최대콤보 <b>${maxCombo}</b><br/>🏆 최고 ${best}초 &nbsp;·&nbsp; 🪙 <b>+${lastEarned}</b> (보유 ${meta.gold})`;
   const rb=document.getElementById('reviveBtn'); rb.style.display=revivedThisRun?'none':'block';
   const db=document.getElementById('dblBtn'); db.disabled=false; db.style.opacity=1; db.textContent='🎬 광고 보고 골드 2배'; goldDoubled=false;
   document.getElementById('over').classList.remove('hidden'); }
