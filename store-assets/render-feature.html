@@ -1,0 +1,46 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+  html,body{margin:0;padding:0;background:#0d0f1a;font-family:-apple-system,"Segoe UI","Malgun Gothic",system-ui,sans-serif}
+  #wrap{position:relative;width:1024px;height:500px;overflow:hidden;
+    background:radial-gradient(120% 140% at 30% 60%, #1a2145 0%, #0c0e1a 60%);}
+  .enemy{position:absolute;border-radius:50%}
+  .sq{position:absolute;border-radius:8px}
+  .gem{position:absolute;width:16px;height:16px;background:#ffd25c;transform:rotate(45deg)}
+  #hero{position:absolute;left:120px;top:250px;width:0;height:0;
+    border-left:70px solid transparent;border-right:70px solid transparent;
+    border-bottom:120px solid #5ce1ff;filter:drop-shadow(0 0 24px rgba(92,225,255,.6));transform:translateY(-50%)}
+  #eye{position:absolute;left:172px;top:262px;width:30px;height:30px;background:#0d0f1a;border-radius:50%;transform:translateY(-50%)}
+  #title{position:absolute;right:56px;top:50%;transform:translateY(-50%);text-align:right}
+  #title .ko{font-size:92px;font-weight:900;color:#fff;letter-spacing:-2px;
+    text-shadow:0 4px 0 #1f52c0,0 0 40px rgba(92,225,255,.5);margin:0;line-height:1}
+  #title .en{font-size:34px;font-weight:800;color:#5ce1ff;letter-spacing:6px;margin:14px 0 0}
+  #title .tag{font-size:24px;color:#c9d3e8;margin-top:18px;font-weight:600}
+  .bolt{position:absolute;width:20px;height:6px;background:#ffd6a0;border-radius:3px;box-shadow:0 0 8px #ffd6a0}
+</style></head><body>
+<div id="wrap">
+  <!-- bullets streaming from hero -->
+  <div class="bolt" style="left:220px;top:236px"></div>
+  <div class="bolt" style="left:270px;top:250px"></div>
+  <div class="bolt" style="left:250px;top:270px"></div>
+  <div class="bolt" style="left:320px;top:244px"></div>
+  <!-- enemies -->
+  <div class="enemy" style="left:430px;top:90px;width:44px;height:44px;background:#ff5c7a"></div>
+  <div class="enemy" style="left:520px;top:180px;width:30px;height:30px;background:#ff9ec4"></div>
+  <div class="enemy" style="left:470px;top:330px;width:56px;height:56px;background:#ff8a5c"></div>
+  <div class="sq" style="left:560px;top:300px;width:48px;height:48px;background:#5cd9c0;transform:rotate(18deg)"></div>
+  <div class="enemy" style="left:600px;top:110px;width:24px;height:24px;background:#ff5c7a"></div>
+  <div class="enemy" style="left:380px;top:400px;width:20px;height:20px;background:#ff9ec4"></div>
+  <div class="enemy" style="left:640px;top:380px;width:34px;height:34px;background:#ff8a5c"></div>
+  <!-- gems -->
+  <div class="gem" style="left:360px;top:180px"></div>
+  <div class="gem" style="left:420px;top:250px"></div>
+  <!-- hero -->
+  <div id="hero"></div>
+  <div id="eye"></div>
+  <!-- title -->
+  <div id="title">
+    <p class="ko">세모의 생존</p>
+    <p class="en">SHAPE SURVIVOR</p>
+    <p class="tag">몰려오는 도형 속에서 살아남아라</p>
+  </div>
+</div>
+</body></html>

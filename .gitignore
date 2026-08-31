@@ -2,3 +2,9 @@ shape-survivor.zip
 _check.js
 _c.js
 node_modules/
+android/
+releases/
+*.apk
+*.aab
+shot-space.cjs
+_*.cjs

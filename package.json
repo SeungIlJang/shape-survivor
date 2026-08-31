@@ -1,0 +1,16 @@
+{
+  "name": "shape-survivor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "세모의 생존 (Shape Survivor)",
+  "scripts": {
+    "copyweb": "node -e \"const fs=require('fs');fs.mkdirSync('www',{recursive:true});for(const f of ['index.html','manifest.webmanifest','sw.js','icon-512.svg'])fs.copyFileSync(f,'www/'+f)\"",
+    "sync": "npm run copyweb && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^6.2.0",
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1"
+  }
+}

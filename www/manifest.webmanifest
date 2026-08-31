@@ -1,0 +1,25 @@
+{
+  "name": "갤로그의 귀환",
+  "short_name": "갤로그의 귀환",
+  "description": "도형 뱀서라이크 — 몰려오는 도형을 자동사격으로 쓸어담는 서바이벌",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0f1a",
+  "theme_color": "#0d0f1a",
+  "icons": [
+    {
+      "src": "icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
