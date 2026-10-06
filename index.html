@@ -1078,8 +1078,8 @@ document.getElementById('tutStartBtn').onclick=()=>{ try{localStorage.setItem('s
 document.getElementById('retryBtn').onclick=startGame;
 document.getElementById('homeBtn').onclick=()=>{ document.getElementById('over').classList.add('hidden'); document.getElementById('ingameShop').classList.add('hidden'); document.getElementById('pauseBtn').style.display='none'; document.getElementById('playShopBtn').style.display='none'; renderClasses(); renderShop(); document.getElementById('start').classList.remove('hidden'); state='start'; };
 // 광고 보상 (부활 / 골드 2배) — AdMob 리워드 광고. 폰(APK)=실광고, 웹=시뮬레이션.
-// ⚠️ AD_USE_TEST=true 유지: 내 실광고를 직접 누르면 애드몹 계정 정지. 출시 시점에만 false.
-const AD_USE_TEST=true;
+// ⚠️ 현재 출시 상태: AD_USE_TEST=false (실광고 송출). 개발·테스트 중에는 true로 되돌리세요 — 내 실광고를 직접 누르면 애드몹 계정 정지.
+const AD_USE_TEST=false;
 const AD_REWARD_REAL='ca-app-pub-9017259597860535/2171653136';
 const AD_REWARD_TEST='ca-app-pub-3940256099942544/5224354917';
 let admobReady=false;
