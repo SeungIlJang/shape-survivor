@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">갤로그의 귀환</string>
+    <string name="title_activity_main">갤로그의 귀환</string>
+    <string name="package_name">com.moduseries.shapesurvivor</string>
+    <string name="custom_url_scheme">com.moduseries.shapesurvivor</string>
+</resources>

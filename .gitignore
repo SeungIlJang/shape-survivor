@@ -2,9 +2,17 @@ shape-survivor.zip
 _check.js
 _c.js
 node_modules/
-android/
 releases/
 *.apk
 *.aab
 shot-space.cjs
 _*.cjs
+
+# android: 프로젝트는 백업하되 비밀번호·빌드물·생성물은 제외
+android/.gradle/
+android/build/
+android/app/build/
+android/app/keystore.properties
+android/local.properties
+android/captures/
+*.jks
