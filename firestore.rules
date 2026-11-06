@@ -1,0 +1,68 @@
+// 갤로그의 귀환 — Firestore 보안 규칙
+// 프로젝트: gallog-return-be90f  (2026-11-06)
+//
+// 붙여넣는 곳: Firebase 콘솔 → Firestore Database → 규칙(Rules) → 전체 교체 → 게시
+//
+// ⚠️ 이 Firestore 는 게임 4개가 같이 쓴다:
+//      scores(갤로그) / hanbal_scores / ppopgi_lb / number_lb
+//    아래 4개 블록은 콘솔에 올라가 있던 것을 '그대로' 옮긴 것이다. 손대지 말 것.
+//    이번에 바뀐 것은 맨 아래 config/tune 블록 하나를 '추가'한 것뿐이다.
+//
+// ⚠️ 맨 끝에 match /{document=**} { allow read,write: if false } 같은 전체 차단을
+//    넣지 말 것. Firestore 는 매칭되지 않은 경로를 어차피 거부하므로 불필요하고,
+//    새 게임 컬렉션을 추가할 때 실수로 막히기만 한다.
+//
+// ⚠️ ADMIN_UID 는 일부러 비워 뒀다 — 이 저장소는 공개라 실제 UID 를 올리지 않는다.
+//    콘솔에 붙여넣기 전에 실제 값으로 바꿀 것(작은따옴표는 남긴다).
+//    UID 얻는 법: 콘솔 → Authentication → Users → 관리자 계정 행의 User UID 복사.
+//    2026-11-06 기준 관리자 계정은 jasi798+gallog@gmail.com 이다.
+//    현재 라이브 규칙에는 실제 UID 가 들어가 있으므로, 계정을 그대로 쓰는 한
+//    이 파일을 다시 올릴 일은 없다(구조 백업용).
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /scores/{id} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['name','stage','kills','ts'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 16
+        && request.resource.data.stage is int && request.resource.data.stage >= 0 && request.resource.data.stage <= 100
+        && request.resource.data.kills is int && request.resource.data.kills >= 0 && request.resource.data.kills <= 10000000;
+    }
+    match /hanbal_scores/{doc} {
+      allow read: if true;
+      allow write: if request.resource.data.score is int
+        && request.resource.data.score >= 0;
+    }
+    match /ppopgi_lb/{doc} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['name','best','total','dex','secret','title'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 16
+        && request.resource.data.best is int && request.resource.data.best >= 0 && request.resource.data.best <= 1000000
+        && request.resource.data.total is int && request.resource.data.total >= 0 && request.resource.data.total <= 10000000
+        && request.resource.data.dex is int && request.resource.data.dex >= 0 && request.resource.data.dex <= 200
+        && request.resource.data.secret is int && request.resource.data.secret >= 0 && request.resource.data.secret <= 50
+        && request.resource.data.title is string && request.resource.data.title.size() <= 24;
+    }
+    match /number_lb/{doc} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['name','score','ts'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 16
+        && request.resource.data.score is int && request.resource.data.score >= 0 && request.resource.data.score <= 100000000;
+    }
+
+    // ── 여기부터가 이번에 추가되는 부분 ──────────────────────────
+    // 갤로그 원격 밸런스 설정.
+    //   읽기: 누구나. 모든 플레이어가 앱 시작 때 받아 가야 한다.
+    //   쓰기: 관리자 1명만. 앱을 뜯으면 Firebase 설정(apiKey 등)이 보이는 구조라
+    //         로그인 없이 열어 두면 누구나 전 플레이어의 밸런스를 덮어쓸 수 있다.
+    match /config/tune {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == 'ADMIN_UID'
+        && request.resource.data.keys().hasOnly(['tune','ts','by'])
+        && request.resource.data.tune is map
+        && request.resource.data.tune.size() <= 40;
+    }
+  }
+}
